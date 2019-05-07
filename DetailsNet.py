@@ -105,11 +105,37 @@ class DetailsNet(nn.Module):
         self.input_channels = input_channels
         self.output_channels = output_channels
 
-        self.c = C(input_channel=64, output_channel=3)
+        self.block0 = ResidualBlock(input_channel=64, output_channel=64)
+        self.block1 = ResidualBlock(input_channel=64, output_channel=64)
+        self.block2 = ResidualBlock(input_channel=64, output_channel=64)
+        self.block3 = ResidualBlock(input_channel=64, output_channel=64)
+
+        self.final = C(input_channel=64, output_channel=3)
 
     def forward(self, x):
-        pass
+        residual0 = x
+        x = self.block0(x)
+        x += residual0
+        x = x.view(x.size(0), -1)
 
+        residual1 = x
+        x = self.block1(x)
+        x += residual1
+        x = x.view(x.size(0), -1)
+
+        residual2 = x
+        x = self.block3(x)
+        x += residual2
+        x = x.view(x.size(0), -1)
+
+        residual3 = x
+        x = self.block3(x)
+        x += residual3
+        x = x.view(x.size(0), -1)
+
+        x = self.final(x)
+
+        return x
 
 # from tensorboardX import SummaryWriter
 #
