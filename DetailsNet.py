@@ -11,6 +11,9 @@ class CL(nn.Module):
 
         :param input_channel: input channel size
         :param output_channel: output channel size
+        :param kernel_size: kernel size of module
+        :param stride: stride of module
+        :param padding: padding of module
         """
 
         assert (input_channel > 0 and output_channel > 0)
@@ -33,7 +36,11 @@ class CBL(nn.Module):
 
         :param input_channel: input channel size
         :param output_channel: output channel size
+        :param kernel_size: kernel size of module
+        :param stride: stride of module
+        :param padding: padding of module
         """
+
         assert (input_channel > 0 and output_channel > 0)
 
         super(CBL, self).__init__()
@@ -46,16 +53,20 @@ class CBL(nn.Module):
 
 
 class C(nn.Module):
-    def __init__(self, input_channel, output_channel):
+    def __init__(self, input_channel, output_channel, kernel_size=3, stride=1, padding=1):
         """
-        At the final layer, a 3x3 convolution is used to map each 64-component feature vector to the desired
+        At the final layer, a 3x3 convolution is used to map feature vector to the desired
         number of classes.
 
         :param input_channel: input channel size
         :param output_channel: output channel size
+        :param kernel_size: kernel size of module
+        :param stride: stride of module
+        :param padding: padding of module
         """
+
         super(C, self).__init__()
-        layers = [nn.Conv2d(input_channel, output_channel, kernel_size=3, padding=1, stride=1),
+        layers = [nn.Conv2d(input_channel, output_channel, kernel_size=kernel_size, stride=stride, padding=padding),
                   nn.Sigmoid()]
         self.layer = nn.Sequential(*layers)
 
