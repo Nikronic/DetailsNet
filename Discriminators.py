@@ -11,6 +11,9 @@ class CL(nn.Module):
 
         :param input_channel: input channel size
         :param output_channel: output channel size
+        :param kernel_size: kernel size of module
+        :param stride: stride of module
+        :param padding: padding of module
         """
 
         assert (input_channel > 0 and output_channel > 0)
@@ -33,6 +36,9 @@ class CBL(nn.Module):
 
         :param input_channel: input channel size
         :param output_channel: output channel size
+        :param kernel_size: kernel size of module
+        :param stride: stride of module
+        :param padding: padding of module
         """
         assert (input_channel > 0 and output_channel > 0)
 
@@ -53,6 +59,9 @@ class C(nn.Module):
 
         :param input_channel: input channel size
         :param output_channel: output channel size
+        :param kernel_size: kernel size of module
+        :param stride: stride of module
+        :param padding: padding of module
         """
 
         super(C, self).__init__()
@@ -123,6 +132,3 @@ class DiscriminatorTwo(nn.Module):
         x = self.final(x)
         return x
 
-
-
-# TODO add documentation to submodules for kernel_Size, stride and padding arguments.
