@@ -8,10 +8,8 @@ class EdgeLoss(nn.Module):
         Return Binary Entropy Loss with mean of all losses in each mini-batch
         """
         super(EdgeLoss, self).__init__()
-        self.cross_entropy = nn.BCELoss(reduction='mean')
+        self.MSE_loss = nn.MSELoss(reduction='mean')
 
     def forward(self, y, y_pred):
-        loss = self.cross_entropy(y, y_pred)
+        loss = self.MSE_loss(y, y_pred)
         return loss
-
-# TODO update loss
