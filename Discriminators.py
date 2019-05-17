@@ -1,8 +1,10 @@
+# %% import library
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
+# %% submodules
 class CL(nn.Module):
     def __init__(self, input_channel, output_channel, kernel_size=4, stride=2, padding=1):
         """
@@ -27,7 +29,6 @@ class CL(nn.Module):
         return self.layers(x)
 
 
-# %%
 class CBL(nn.Module):
     def __init__(self, input_channel, output_channel, kernel_size=4, stride=2, padding=1):
         """
@@ -73,8 +74,9 @@ class C(nn.Module):
         return self.layer(x)
 
 
+# %% discriminator one
 class DiscriminatorOne(nn.Module):
-    def __init__(self, input_channel, output_channel=1):
+    def __init__(self, input_channel=3, output_channel=1):
         """
         Consists of a CL module followed by repetitive CBL modules and finally a C class
         to match the final needed classes.
@@ -84,7 +86,6 @@ class DiscriminatorOne(nn.Module):
         """
 
         super(DiscriminatorOne, self).__init__()
-        # TODO input size is ARBITRARY for now and must be calculated exactly!
         self.cl = CL(input_channel=input_channel, output_channel=128, kernel_size=4, stride=2, padding=1)
         self.cbl0 = CBL(input_channel=128, output_channel=256, kernel_size=4, stride=2, padding=1)
         self.cbl1 = CBL(input_channel=256, output_channel=512, kernel_size=4, stride=2, padding=1)
@@ -103,8 +104,9 @@ class DiscriminatorOne(nn.Module):
         return x
 
 
+# %% discriminator two
 class DiscriminatorTwo(nn.Module):
-    def __init__(self, input_channel, output_channel=1):
+    def __init__(self, input_channel=3, output_channel=1):
         """
         Consists of a CL module followed by repetitive CBL modules and finally a C class
         to match the final needed classes.
@@ -114,7 +116,6 @@ class DiscriminatorTwo(nn.Module):
         """
 
         super(DiscriminatorTwo, self).__init__()
-        # TODO input size is ARBITRARY for now and must be calculated exactly!
         self.cl = CL(input_channel=input_channel, output_channel=128, kernel_size=5, stride=2, padding=0)
         self.cbl0 = CBL(input_channel=128, output_channel=256, kernel_size=5, stride=2, padding=0)
         self.cbl1 = CBL(input_channel=256, output_channel=512, kernel_size=5, stride=2, padding=0)
@@ -132,3 +133,4 @@ class DiscriminatorTwo(nn.Module):
         x = self.final(x)
         return x
 
+# %% tests
