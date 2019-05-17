@@ -91,48 +91,39 @@ class PlacesDataset(Dataset):
             y_descreen = self.transform(y_descreen)
 
         # generate edge-map
-        y_edge = self.canny_edge_detector(y_descreen)
-        y_edge = self.to_tensor(y_edge)
+        y_noise = self.noisy_image(y_descreen)
+        y_noise = self.to_tensor(y_noise)
 
         sample = {'y_descreen': y_descreen,
-                  'y_edge': y_edge}
+                  'y_noise': y_noise}
 
         return sample
 
-    def canny_edge_detector(self, image):
+    def noisy_image(self, image):
         """
-        Returns a binary image with same size of source image which each pixel determines belonging to an edge or not.
+        Add some random noise to image and return image as same type as input.
 
         :param image: PIL image
-        :return: Binary numpy array
+        :return: PIL image
         """
+
         if type(image) == torch.Tensor:
             image = self.to_pil(image)
-        image = image.convert(mode='L')
         image = np.array(image)
-        edges = feature.canny(image, sigma=1)  # TODO: the sigma hyper parameter value is not defined in the paper.
-        size = edges.shape[::-1]
-        data_bytes = np.packbits(edges, axis=1)
-        edges = Image.frombytes(mode='1', size=size, data=data_bytes)
-        return edges
-
-
-# https://discuss.pytorch.org/t/adding-gaussion-noise-in-cifar10-dataset/961/2
-class RandomNoise(object):
-    def __init__(self, p, mean=0, std=1):
-        self.p = p
-        self.mean = mean
-        self.std = std
-
-    def __call__(self, img):
-        if random.random() <= self.p:
-            return img.clone().normal_(self.mean, self.std)
-        return img
+        s_vs_p = 0.5
+        amount = 0.015
+        out = np.copy(image)
+        num_salt = np.ceil(amount * image.size * s_vs_p)
+        coords = tuple([np.random.randint(0, i - 1, int(num_salt)) for i in image.shape])
+        out[coords] = 1
+        num_pepper = np.ceil(amount * image.size * (1. - s_vs_p))
+        coords = tuple([np.random.randint(0, i - 1, int(num_pepper)) for i in image.shape])
+        out[coords] = 0
+        out = ToPILImage()(out)
+        return out
 
 
 # %% test 2
 # z = get_image_by_name('data/data.tar', 'Places365_val_00000002.jpg')
 # ze = canny_edge_detector(z)
 # ze.show()
-
-# TODO make customization for DetailsNet
