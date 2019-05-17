@@ -1,8 +1,10 @@
+# %% import library
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
+# %% submodules
 class CL(nn.Module):
     def __init__(self, input_channel, output_channel, kernel_size=4, stride=2, padding=1):
         """
@@ -27,7 +29,6 @@ class CL(nn.Module):
         return self.layers(x)
 
 
-# %%
 class CBL(nn.Module):
     def __init__(self, input_channel, output_channel, kernel_size=4, stride=2, padding=1):
         """
@@ -74,6 +75,7 @@ class C(nn.Module):
         return self.layer(x)
 
 
+# %% residual block
 class ResidualBlock(nn.Module):
     def __init__(self, input_channel, output_channel, kernel_size=3, stride=1, padding=1):
         """
@@ -103,6 +105,7 @@ class ResidualBlock(nn.Module):
         return out
 
 
+# %% details net
 class DetailsNet(nn.Module):
     def __init__(self, input_channels=64, output_channels=3):
         """
@@ -116,41 +119,36 @@ class DetailsNet(nn.Module):
         self.input_channels = input_channels
         self.output_channels = output_channels
 
-        self.block0 = ResidualBlock(input_channel=64, output_channel=64)
+        self.block0 = ResidualBlock(input_channel=self.input_channels, output_channel=64)
         self.block1 = ResidualBlock(input_channel=64, output_channel=64)
         self.block2 = ResidualBlock(input_channel=64, output_channel=64)
         self.block3 = ResidualBlock(input_channel=64, output_channel=64)
 
-        self.final = C(input_channel=64, output_channel=3)
+        self.final = C(input_channel=64, output_channel=self.output_channels)
 
     def forward(self, x):
         residual0 = x
         x = self.block0(x)
         x += residual0
-        x = x.view(x.size(0), -1)
 
         residual1 = x
         x = self.block1(x)
         x += residual1
-        x = x.view(x.size(0), -1)
 
         residual2 = x
         x = self.block3(x)
         x += residual2
-        x = x.view(x.size(0), -1)
 
         residual3 = x
         x = self.block3(x)
         x += residual3
-        x = x.view(x.size(0), -1)
 
         x = self.final(x)
 
         return x
 
-# from tensorboardX import SummaryWriter
-#
-# dummy_input = (torch.zeros(1, 3, 256, 256),)
-#
-# with SummaryWriter() as w:
-#     w.add_graph(EdgeNet(input_channels=3, output_channels=1), dummy_input, True)
+
+# %% tests
+# z = torch.randn(size=(1, 64, 128, 128))
+# details_net = DetailsNet()
+# zo = details_net(z)
