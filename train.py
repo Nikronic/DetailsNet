@@ -8,7 +8,7 @@ import torch
 from torch.utils.data import DataLoader
 from utils.loss import DetailsLoss
 
-import torchvision.models as models
+from vgg import vgg19_bn
 import torch.optim as optim
 import torch.nn as nn
 from torch.backends import cudnn
@@ -101,7 +101,7 @@ def train_model(net, data_loader, optimizer, criterion, discriminators=None, epo
 # %% run model
 criterion = DetailsLoss()
 details_net = DetailsNet().to(device)
-models.vgg19_bn(pretrained=True, progress=True)
+vgg19_bn_net = vgg19_bn(pretrained=True)
 disc_one = DiscriminatorOne().to(device)
 disc_two = DiscriminatorTwo().to(device)
 optimizer = optim.Adam(details_net.parameters(), lr=0.0001)

@@ -22,7 +22,8 @@ class DetailsLoss(nn.Module):
         self.w3 = w3
         self.w4 = w4
         self.l1_loss = nn.L1Loss(reduction='mean')
-        self.MSE_loss = nn.MSELoss(reduction='sum')
+        self.MSE_loss_sum = nn.MSELoss(reduction='sum')
+        self.MSE_loss_mean = nn.MSELoss(reduction='mean')
         self.BCE_loss = nn.BCELoss(reduction='mean')
 
     # reference: https://github.com/pytorch/tutorials/blob/master/advanced_source/neural_style_tutorial.py
@@ -30,8 +31,10 @@ class DetailsLoss(nn.Module):
     def gram_matrix(mat):
         """
         Return Gram matrix
+
         :param mat: A matrix  (a=batch size(=1), b=number of feature maps,
         (c,d)=dimensions of a f. map (N=c*d))
+
         :return: Normalized Gram matrix
         """
         a, b, c, d = mat.size()
@@ -39,12 +42,20 @@ class DetailsLoss(nn.Module):
         gram = torch.mm(features, features.t())
         return gram.div(a * b * c * d)
 
-    def forward(self, y, y_pred):
+    def forward(self, y, y_pred, phi_y, phi_y_pred):
+        """
+
+        :param y: Ground truth tensor
+        :param y_pred: Estimated ground truth
+        :param phi_y: Low spatial tensor of Y obtained by VGG19[BN] pretrained model
+        :param phi_y_pred: Low spatial tensor of Y_PRED obtained by VGG19[BN] pretrained model
+        :return:
+        """
+
         # TODO y_pred and y are concatenated latent vector, so first we must extract different features.
-        coarse_loss = 50 * self.l1_loss(y, y_pred) + 1 * self.MSE_loss(y, y_pred)
+        coarse_loss = 50 * self.l1_loss(y, y_pred) + 1 * self.MSE_loss_sum(y, y_pred)
         edge_loss = self.BCE_loss(y, y_pred)
-        raise NotImplementedError('Loss function of DetailsNet and Discriminators')
-        patch_loss = None
+        patch_loss = self.MSE_loss_mean(self.gram_matrix(phi_y), self.gram_matrix(phi_y_pred))
         adversarial_loss = None
 
         loss = self.w1 * coarse_loss + self.w2 * edge_loss + self.w3 * patch_loss + self.w4 * adversarial_loss
