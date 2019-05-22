@@ -1,9 +1,7 @@
 from __future__ import print_function, division
 from PIL import Image
 from torchvision.transforms import ToTensor, ToPILImage
-from skimage import feature, color
 import numpy as np
-import random
 
 import tarfile
 import io
@@ -101,7 +99,7 @@ class PlacesDataset(Dataset):
 
     def noisy_image(self, image):
         """
-        Add some random noise to image and return image as same type as input.
+        Add Salt and Pepper noise to image and return image as same type as input.
 
         :param image: PIL image
         :return: PIL image

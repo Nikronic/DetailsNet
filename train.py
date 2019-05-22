@@ -1,5 +1,6 @@
 # %% import library
 from DetailsNet import DetailsNet
+from Discriminators import DiscriminatorOne, DiscriminatorTwo
 from torchvision.transforms import Compose, ToPILImage, ToTensor, RandomResizedCrop, RandomRotation, \
     RandomHorizontalFlip
 from utils.preprocess import *
@@ -7,6 +8,7 @@ import torch
 from torch.utils.data import DataLoader
 from utils.loss import DetailsLoss
 
+import torchvision.models as models
 import torch.optim as optim
 import torch.nn as nn
 from torch.backends import cudnn
@@ -59,10 +61,11 @@ def init_weights(m):
 
 
 # %% train model
-def train_model(net, data_loader, optimizer, criterion, epochs=10):
+def train_model(net, data_loader, optimizer, criterion, discriminators=None, epochs=10):
     """
     Train model
     :param net: Parameters of defined neural network
+    :param discriminators: List of discriminators objects
     :param data_loader: A data loader object defined on train data set
     :param epochs: Number of epochs to train model
     :param optimizer: Optimizer to train network
@@ -98,6 +101,9 @@ def train_model(net, data_loader, optimizer, criterion, epochs=10):
 # %% run model
 criterion = DetailsLoss()
 details_net = DetailsNet().to(device)
+models.vgg19_bn(pretrained=True, progress=True)
+disc_one = DiscriminatorOne().to(device)
+disc_two = DiscriminatorTwo().to(device)
 optimizer = optim.Adam(details_net.parameters(), lr=0.0001)
 details_net.apply(init_weights)
-train_model(details_net, train_loader, optimizer, criterion, epochs=10)
+train_model(details_net, train_loader, optimizer, criterion, discriminators=[disc_one, disc_two], epochs=10)

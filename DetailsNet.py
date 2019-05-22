@@ -111,7 +111,8 @@ class DetailsNet(nn.Module):
         """
         The generator of GAN networks contains repeated residual blocks and C block at the end.
 
-        :param input_channels: number of input channels of input images to network.
+        :param input_channels: number of input channels of input images to network. Actually, it is latent vector length
+        which is fusion of previous vectors which we call I<sub>f</sub>.
         :param output_channels: number of output channels of output images of network.
         """
 
