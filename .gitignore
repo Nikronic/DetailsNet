@@ -108,3 +108,5 @@ venv.bak/
 
 # ignore pretrained .pth files
 .pretrained
+
+*.pth
