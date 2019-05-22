@@ -11,11 +11,13 @@ import torch
 
 # %% global variables
 __all__ = [
-    'VGG', 'vgg19_bn', 'vgg19',
+    'VGG', 'vgg16', 'vgg16_bn', 'vgg19_bn', 'vgg19',
 ]
 
 model_urls = {
+    'vgg16': 'https://download.pytorch.org/models/vgg16-397923af.pth',
     'vgg19': 'https://download.pytorch.org/models/vgg19-dcbb9e9d.pth',
+    'vgg16_bn': 'https://download.pytorch.org/models/vgg16_bn-6c64b313.pth',
     'vgg19_bn': 'https://download.pytorch.org/models/vgg19_bn-c79401a0.pth',
 }
 
@@ -81,6 +83,34 @@ cfg = {
     'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
     'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
 }
+
+
+def vgg16(pretrained=False, **kwargs):
+    """VGG 16-layer model (configuration "D")
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    if pretrained:
+        kwargs['init_weights'] = False
+    model = VGG(make_layers(cfg['D']), **kwargs)
+    if pretrained:
+        model.load_state_dict(load_url(model_urls['vgg16']))
+    return model
+
+
+def vgg16_bn(pretrained=False, **kwargs):
+    """VGG 16-layer model (configuration "D") with batch normalization
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    if pretrained:
+        kwargs['init_weights'] = False
+    model = VGG(make_layers(cfg['D'], batch_norm=True), **kwargs)
+    if pretrained:
+        model.load_state_dict(load_url(model_urls['vgg16_bn']))
+    return model
 
 
 def vgg19(pretrained=False, **kwargs):
