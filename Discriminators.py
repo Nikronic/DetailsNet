@@ -22,7 +22,7 @@ class CL(nn.Module):
 
         super(CL, self).__init__()
         layers = [nn.Conv2d(input_channel, output_channel, kernel_size=kernel_size, stride=stride, padding=padding),
-                  nn.LeakyReLU(0.2)]
+                  nn.LeakyReLU(0.2, inplace=True)]
         self.layers = nn.Sequential(*layers)
 
     def forward(self, x):
@@ -45,7 +45,7 @@ class CBL(nn.Module):
 
         super(CBL, self).__init__()
         layers = [nn.Conv2d(input_channel, output_channel, kernel_size=kernel_size, stride=stride, padding=padding),
-                  nn.BatchNorm2d(num_features=output_channel), nn.LeakyReLU(0.2)]
+                  nn.BatchNorm2d(num_features=output_channel), nn.LeakyReLU(0.2, inplace=True)]
         self.layers = nn.Sequential(*layers)
 
     def forward(self, x):
@@ -106,12 +106,13 @@ class DiscriminatorOne(nn.Module):
 
 # %% discriminator two
 class DiscriminatorTwo(nn.Module):
-    def __init__(self, input_channel=3, output_channel=1):
+    def __init__(self, input_channel=9, output_channel=1):
         """
         Consists of a CL module followed by repetitive CBL modules and finally a C class
         to match the final needed classes.
 
-        :param input_channel: number of input channels of input images to network.
+        :param input_channel: number of input channels of input images to network which is concatenation of
+        I<sub>h</sub>, I<sub>d</sub>, and I<sub>o</sub> RGB vectors.
         :param output_channel: number of output channels of input images to network.
         """
 

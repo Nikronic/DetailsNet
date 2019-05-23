@@ -22,7 +22,7 @@ class CL(nn.Module):
 
         super(CL, self).__init__()
         layers = [nn.Conv2d(input_channel, output_channel, kernel_size=kernel_size, stride=stride, padding=padding),
-                  nn.LeakyReLU(0.2)]
+                  nn.LeakyReLU(0.2, inplace=True)]
         self.layers = nn.Sequential(*layers)
 
     def forward(self, x):
@@ -46,7 +46,7 @@ class CBL(nn.Module):
 
         super(CBL, self).__init__()
         layers = [nn.Conv2d(input_channel, output_channel, kernel_size=kernel_size, stride=stride, padding=padding),
-                  nn.BatchNorm2d(num_features=output_channel), nn.LeakyReLU(0.2)]
+                  nn.BatchNorm2d(num_features=output_channel), nn.LeakyReLU(0.2, inplace=True)]
         self.layers = nn.Sequential(*layers)
 
     def forward(self, x):
@@ -107,12 +107,13 @@ class ResidualBlock(nn.Module):
 
 # %% details net
 class DetailsNet(nn.Module):
-    def __init__(self, input_channels=64, output_channels=3):
+    def __init__(self, input_channels=32, output_channels=3):
         """
         The generator of GAN networks contains repeated residual blocks and C block at the end.
 
         :param input_channels: number of input channels of input images to network. Actually, it is latent vector length
-        which is fusion of previous vectors which we call I<sub>f</sub>.
+        which is fusion of I<sub>h</sub>, I<sub>a</sub>, I<sub>c</sub>, I<sub>e</sub> vectors
+        which is called I<sub>f</sub>.
         :param output_channels: number of output channels of output images of network.
         """
 
