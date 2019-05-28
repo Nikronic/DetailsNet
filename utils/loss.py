@@ -1,6 +1,7 @@
 # %% libraries
 import torch.nn as nn
 import torch
+from vgg import vgg19_bn
 
 
 class DetailsLoss(nn.Module):
@@ -22,9 +23,9 @@ class DetailsLoss(nn.Module):
         self.w3 = w3
         self.w4 = w4
         self.l1_loss = nn.L1Loss(reduction='mean')
-        self.MSE_loss_sum = nn.MSELoss(reduction='sum')
-        self.MSE_loss_mean = nn.MSELoss(reduction='mean')
+        self.MSE_loss = nn.MSELoss(reduction='mean')
         self.BCE_loss = nn.BCELoss(reduction='mean')
+        self.vgg19_bn = vgg19_bn(pretrained=True)
 
     # reference: https://github.com/pytorch/tutorials/blob/master/advanced_source/neural_style_tutorial.py
     @staticmethod
@@ -42,21 +43,31 @@ class DetailsLoss(nn.Module):
         gram = torch.mm(features, features.t())
         return gram.div(a * b * c * d)
 
-    def forward(self, y, y_pred, phi_y, phi_y_pred):
+    @staticmethod
+    def patch_feature(self):
+        raise NotImplementedError('This method has not been implemented yet.')
+
+    def forward(self, y, y_pred):
         """
 
         :param y: Ground truth tensor
         :param y_pred: Estimated ground truth
-        :param phi_y: Low spatial tensor of Y obtained by VGG19[BN] pretrained model
-        :param phi_y_pred: Low spatial tensor of Y_PRED obtained by VGG19[BN] pretrained model
-        :return:
+        :return: A scalar number
         """
 
         # TODO y_pred and y are concatenated latent vector, so first we must extract different features.
-        coarse_loss = 50 * self.l1_loss(y, y_pred) + 1 * self.MSE_loss_sum(y, y_pred)
+
+        y_patch_pool2 = self.patch_feature(self.vgg16_bn(y[0]))
+        y_patch_pool5 = self.patch_feature(self.vgg16_bn(y[1]))
+        y_pred_patch_pool2 = self.patch_feature(self.vgg16_bn(y_pred[0]))
+        y_pred_patch_pool5 = self.patch_feature(self.vgg16_bn(y_pred[1]))
+
+        coarse_loss = 50 * self.l1_loss(y, y_pred) + 1 * self.MSE_loss(y, y_pred)
         edge_loss = self.BCE_loss(y, y_pred)
-        patch_loss = self.MSE_loss_mean(self.gram_matrix(phi_y), self.gram_matrix(phi_y_pred))
+        patch_loss = (self.MSE_loss(self.gram_matrix(y_patch_pool2), self.gram_matrix(y_pred_patch_pool2)) +
+                      self.MSE_loss(self.gram_matrix(y_patch_pool5), self.gram_matrix(y_pred_patch_pool5)))
         adversarial_loss = None
 
         loss = self.w1 * coarse_loss + self.w2 * edge_loss + self.w3 * patch_loss + self.w4 * adversarial_loss
+        raise NotImplementedError('Adversarial loss not implemented')
         return loss
