@@ -54,7 +54,7 @@ class VGG(nn.Module):
             x = layer(x)
             if i in self.inner_layers:
                 results.append(x)
-        return x
+        return results
 
     def _initialize_weights(self):
         for m in self.modules():
