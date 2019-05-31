@@ -119,9 +119,3 @@ class PlacesDataset(Dataset):
         out[coords] = 0
         out = ToPILImage()(out)
         return out
-
-
-# %% test 2
-# z = get_image_by_name('data/data.tar', 'Places365_val_00000002.jpg')
-# ze = canny_edge_detector(z)
-# ze.show()
