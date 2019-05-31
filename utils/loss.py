@@ -2,8 +2,9 @@
 import torch.nn as nn
 import torch
 from vgg import vgg19_bn
+import numpy as np
 
-
+# %% DetailsNet class
 class DetailsLoss(nn.Module):
     def __init__(self, w1=100, w2=0.1, w3=0.5, w4=1):
         """
@@ -33,19 +34,31 @@ class DetailsLoss(nn.Module):
         """
         Return Gram matrix
 
-        :param mat: A matrix  (a=batch size(=1), b=number of feature maps,
+        :param mat: A matrix  (a=batch size(=1), b=number of feature maps, p=number of patches,
         (c,d)=dimensions of a f. map (N=c*d))
 
         :return: Normalized Gram matrix
         """
-        a, b, c, d = mat.size()
-        features = mat.view(a * b, c * d)
+        a, b, p, c, d = mat.size()
+        features = mat.view(a * b * p, c * d)
         gram = torch.mm(features, features.t())
-        return gram.div(a * b * c * d)
+        return gram.div(a * b * p * c * d)
 
     @staticmethod
-    def patch_feature(self):
-        raise NotImplementedError('This method has not been implemented yet.')
+    def get_patch(mat, size=14, stride=14):
+        """
+
+
+        :param mat: A tensor (batch_size, channel_size, height, width)
+        :param stride: Stride size of the patch
+        :param size: Size of the patch
+        :return: A patched tensor (batch_size, channel_size, patch_size, height, width)
+        """
+
+        batch_size, channel_size, height, width = tuple(mat.size())
+        patches = mat.unfold(2, size, stride).unfold(3, size, stride)
+        patches = patches.contiguous().view((batch_size, channel_size, -1, size, stride))
+        return patches
 
     def forward(self, y, y_pred):
         """
@@ -57,15 +70,13 @@ class DetailsLoss(nn.Module):
 
         # TODO y_pred and y are concatenated latent vector, so first we must extract different features.
 
-        y_patch_pool2 = self.patch_feature(self.vgg16_bn(y[0]))
-        y_patch_pool5 = self.patch_feature(self.vgg16_bn(y[1]))
-        y_pred_patch_pool2 = self.patch_feature(self.vgg16_bn(y_pred[0]))
-        y_pred_patch_pool5 = self.patch_feature(self.vgg16_bn(y_pred[1]))
-
-        coarse_loss = 50 * self.l1_loss(y, y_pred) + 1 * self.MSE_loss(y, y_pred)
+        y_vgg = self.vgg16_bn(y)
+        y_pred_vgg = self.vgg16_bn(y_pred)
+        coarse_loss = self.l1_loss(y, y_pred)
         edge_loss = self.BCE_loss(y, y_pred)
-        patch_loss = (self.MSE_loss(self.gram_matrix(y_patch_pool2), self.gram_matrix(y_pred_patch_pool2)) +
-                      self.MSE_loss(self.gram_matrix(y_patch_pool5), self.gram_matrix(y_pred_patch_pool5)))
+        patch_loss = np.sum(
+            [self.MSE_loss(self.gram_matrix(self.get_patch(ly)), self.gram_matrix(self.get_patch(lp)))
+             for ly, lp in zip(y_vgg, y_pred_vgg)])
         adversarial_loss = None
 
         loss = self.w1 * coarse_loss + self.w2 * edge_loss + self.w3 * patch_loss + self.w4 * adversarial_loss
