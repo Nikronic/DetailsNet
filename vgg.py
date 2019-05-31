@@ -24,7 +24,7 @@ model_urls = {
 }
 
 __inner_layer__ = {
-    'vgg16_bn': {13, 43},
+    'vgg16_bn': {0, 7, 14, 24, 34},
     'vgg19_bn': {13, 52}
 }
 
@@ -175,7 +175,3 @@ def get_maxpool_layer_indexes(model):
         if str(d).__contains__('MaxPool'):
             pooling_indexes.append(i)
 
-# %% tests
-# model = vgg19_bn()
-# x = torch.randn(1, 3, 256, 256)
-# x = model(x)
