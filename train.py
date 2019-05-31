@@ -8,7 +8,6 @@ import torch
 from torch.utils.data import DataLoader
 from utils.loss import DetailsLoss
 
-from vgg import vgg19_bn
 import torch.optim as optim
 import torch.nn as nn
 from torch.backends import cudnn
@@ -29,7 +28,7 @@ train_dataset = PlacesDataset(txt_path='filelist.txt',
 train_loader = DataLoader(dataset=train_dataset,
                           batch_size=128,
                           shuffle=True,
-                          num_workers=5,
+                          num_workers=1,
                           pin_memory=False)
 
 test_dataset = PlacesDataset(txt_path='filelist.txt',
@@ -53,8 +52,8 @@ def init_weights(m):
     """
 
     if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-        torch.nn.init.kaiming_normal_(m.weight, mode='fan_in')
-        m.bias.data.fill_(0.0)
+        torch.nn.init.kaiming_normal_(m.weight, mode='fan_out')
+        nn.init.constant_(m.bias, 0)
     elif isinstance(m, nn.BatchNorm2d):  # reference: https://github.com/pytorch/pytorch/issues/12259
         nn.init.constant_(m.weight, 1)
         nn.init.constant_(m.bias, 0)
@@ -98,12 +97,62 @@ def train_model(net, data_loader, optimizer, criterion, discriminators=None, epo
     print('Finished Training')
 
 
+# %% test
+def test_model(net, data_loader):
+    """
+    Return loss on test
+
+    :param net: The trained NN network
+    :param data_loader: Data loader containing test set
+    :return: Print loss value over test set in console
+    """
+
+    net.eval()
+    running_loss = 0.0
+    with torch.no_grad():
+        for data in data_loader:
+            X = data['X']
+            y_d = data['y_descreen']
+            X = X.to(device)
+            y_d = y_d.to(device)
+            outputs = net(X)
+            loss = criterion(outputs, y_d)
+            running_loss += loss
+            print('loss: %.3f' % running_loss)
+    return outputs
+
+
+def show_test(image_batch):
+    """
+    Get a batch of images of torch.Tensor type and show them as a single gridded PIL image
+
+    :param image_batch: A Batch of torch.Tensor contain images
+    :return: An array of PIL images
+    """
+    to_pil = ToPILImage()
+    fs = []
+    for i in range(len(image_batch)):
+        img = to_pil(image_batch[i].cpu())
+        fs.append(img)
+    x, y = fs[0].size
+    ncol = 3
+    nrow = 3
+    cvs = Image.new('RGB', (x * ncol, y * nrow))
+    for i in range(len(fs)):
+        px, py = x * int(i / nrow), y * (i % nrow)
+        cvs.paste((fs[i]), (px, py))
+    cvs.save('out.png', format='png')
+    cvs.show()
+    return fs
+
+
 # %% run model
 criterion = DetailsLoss()
 details_net = DetailsNet().to(device)
-vgg19_bn_net = vgg19_bn(pretrained=True)
 disc_one = DiscriminatorOne().to(device)
 disc_two = DiscriminatorTwo().to(device)
 optimizer = optim.Adam(details_net.parameters(), lr=0.0001)
 details_net.apply(init_weights)
+disc_one.apply(init_weights)
+disc_two.apply(init_weights)
 train_model(details_net, train_loader, optimizer, criterion, discriminators=[disc_one, disc_two], epochs=10)
