@@ -3,6 +3,7 @@ from PIL import Image
 from torchvision.transforms import ToTensor, ToPILImage
 import numpy as np
 
+import random
 import tarfile
 import io
 import os
@@ -119,3 +120,16 @@ class PlacesDataset(Dataset):
         out[coords] = 0
         out = ToPILImage()(out)
         return out
+
+
+# https://discuss.pytorch.org/t/adding-gaussion-noise-in-cifar10-dataset/961/2
+class RandomNoise(object):
+    def __init__(self, p, mean=0, std=1):
+        self.p = p
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, img):
+        if random.random() <= self.p:
+            return img.clone().normal_(self.mean, self.std)
+        return img

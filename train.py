@@ -19,7 +19,8 @@ custom_transforms = Compose([
     RandomResizedCrop(size=224, scale=(0.8, 1.2)),
     RandomRotation(degrees=(-30, 30)),
     RandomHorizontalFlip(p=0.5),
-    ToTensor()])
+    ToTensor(),
+    RandomNoise(p=0.5, mean=0, std=1)])
 
 train_dataset = PlacesDataset(txt_path='filelist.txt',
                               img_dir='data',
@@ -72,6 +73,7 @@ def train_model(net, data_loader, optimizer, criterion, discriminators=None, epo
     :return: None
     """
 
+
     net.train()
     for epoch in range(epochs):
 
@@ -81,6 +83,7 @@ def train_model(net, data_loader, optimizer, criterion, discriminators=None, epo
             y_noise = data['y_noise']
 
             y_descreen = y_descreen.to(device)
+            y_descreen = random_noise_adder(y_descreen)
             y_noise = y_noise.to(device)
 
             optimizer.zero_grad()
@@ -148,11 +151,17 @@ def show_test(image_batch):
 
 # %% run model
 criterion = DetailsLoss()
+random_noise_adder = RandomNoise(p=0, mean=0, std=1)
 details_net = DetailsNet().to(device)
 disc_one = DiscriminatorOne().to(device)
 disc_two = DiscriminatorTwo().to(device)
+
 optimizer = optim.Adam(details_net.parameters(), lr=0.0001)
+# TODO add separate optimizer for each discriminator.
+
 details_net.apply(init_weights)
 disc_one.apply(init_weights)
 disc_two.apply(init_weights)
+
 train_model(details_net, train_loader, optimizer, criterion, discriminators=[disc_one, disc_two], epochs=10)
+
