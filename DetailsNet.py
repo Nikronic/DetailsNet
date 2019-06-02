@@ -68,7 +68,7 @@ class C(nn.Module):
 
         super(C, self).__init__()
         layers = [nn.Conv2d(input_channel, output_channel, kernel_size=kernel_size, stride=stride, padding=padding),
-                  nn.Sigmoid()]
+                  nn.Tanh()]
         self.layer = nn.Sequential(*layers)
 
     def forward(self, x):

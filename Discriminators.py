@@ -66,8 +66,7 @@ class C(nn.Module):
         """
 
         super(C, self).__init__()
-        layers = [nn.Conv2d(input_channel, output_channel, kernel_size=kernel_size, stride=stride, padding=padding),
-                  nn.Sigmoid()]
+        layers = [nn.Conv2d(input_channel, output_channel, kernel_size=kernel_size, stride=stride, padding=padding)]
         self.layer = nn.Sequential(*layers)
 
     def forward(self, x):
@@ -134,4 +133,8 @@ class DiscriminatorTwo(nn.Module):
         x = self.final(x)
         return x
 
+
 # %% tests
+z = torch.randn(size=(1, 9, 128, 128))
+d1 = DiscriminatorTwo()
+z = d1(z)
