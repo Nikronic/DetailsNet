@@ -8,11 +8,13 @@ import torch
 from torch.utils.data import DataLoader
 from utils.loss import DetailsLoss
 
+from torch.autograd import Variable
 import torch.optim as optim
 import torch.nn as nn
 from torch.backends import cudnn
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+Tensor = torch.cuda.FloatTensor if torch.cuda.is_available else torch.FloatTensor
 
 # %% define data sets and their loaders
 custom_transforms = Compose([
@@ -20,7 +22,7 @@ custom_transforms = Compose([
     RandomRotation(degrees=(-30, 30)),
     RandomHorizontalFlip(p=0.5),
     ToTensor(),
-    RandomNoise(p=0.5, mean=0, std=1)])
+    RandomNoise(p=0.5, mean=0, std=0.1)])
 
 train_dataset = PlacesDataset(txt_path='filelist.txt',
                               img_dir='data',
@@ -68,35 +70,54 @@ def train_model(net, data_loader, optimizer, criterion, discriminators=None, epo
     :param discriminators: List of discriminators objects
     :param data_loader: A data loader object defined on train data set
     :param epochs: Number of epochs to train model
-    :param optimizer: Optimizer to train network
+    :param optimizer: Optimizer(s) to train network
     :param criterion: The loss function to minimize by optimizer
     :return: None
     """
 
+    optimizer_g = optimizer[0]
+    optimizer_d1 = optimizer[1]
+    optimizer_d2 = optimizer[2]
 
     net.train()
     for epoch in range(epochs):
 
-        running_loss = 0.0
+        running_loss_g = 0.0
+        running_loss_d = 0.0
         for i, data in enumerate(data_loader, 0):
-            y_descreen = data['y_descreen']
+            X = data['y_descreen']
             y_noise = data['y_noise']
 
-            y_descreen = y_descreen.to(device)
-            y_descreen = random_noise_adder(y_descreen)
+            valid = Variable(Tensor(X.size(0), 1).fill_(1.0), requires_grad=False)
+            fake = Variable(Tensor(X.size(0), 1).fill_(0.0), requires_grad=False)
+
+            X = X.to(device)
+            X = random_noise_adder(X)
             y_noise = y_noise.to(device)
 
-            optimizer.zero_grad()
+            # train generator
+            optimizer_g.zero_grad()
 
-            outputs = net(y_descreen)
-            loss = criterion(outputs, y_noise)
-            loss.backward()
-            optimizer.step()
+            gen_imgs = net(y_noise)
+            g_loss = criterion(disc_one(gen_imgs), valid)
+            g_loss.backward()
+            optimizer_g.step()
 
-            running_loss += loss.item()
+            # train discriminator
+            optimizer_d1.zero_grad()
+            optimizer_d2.zero_grad()
 
-            print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss))
-            running_loss = 0.0
+            real_loss = criterion(disc_one(X), valid)
+            fake_loss = criterion(disc_one(gen_imgs), fake)
+            d_loss = (real_loss + fake_loss) / 2
+            d_loss.backward()
+            optimizer_d1.step()
+            optimizer_d2.step()
+
+            running_loss_g += g_loss.item()
+            running_loss_d += d_loss.item()
+
+            print('[%d, %5d] loss_g: %.3f , loss_d: %0.f' % (epoch + 1, i + 1, running_loss_g, running_loss_d))
     print('Finished Training')
 
 
@@ -156,12 +177,13 @@ details_net = DetailsNet().to(device)
 disc_one = DiscriminatorOne().to(device)
 disc_two = DiscriminatorTwo().to(device)
 
-optimizer = optim.Adam(details_net.parameters(), lr=0.0001)
-# TODO add separate optimizer for each discriminator.
+optimizer_g = optim.Adam(details_net.parameters(), lr=0.0001)
+optimizer_d1 = optim.Adam(disc_one.parameters(), lr=0.0001)
+optimizer_d2 = optim.Adam(disc_two.parameters(), lr=0.0001)
 
 details_net.apply(init_weights)
 disc_one.apply(init_weights)
 disc_two.apply(init_weights)
 
-train_model(details_net, train_loader, optimizer, criterion, discriminators=[disc_one, disc_two], epochs=10)
-
+train_model(details_net, train_loader, optimizer=[optimizer_g, optimizer_d1, optimizer_d2],
+            criterion=criterion, discriminators=[disc_one, disc_two], epochs=10)
