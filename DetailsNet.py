@@ -68,7 +68,9 @@ class C(nn.Module):
 
         super(C, self).__init__()
         layers = [nn.Conv2d(input_channel, output_channel, kernel_size=kernel_size, stride=stride, padding=padding),
-                  nn.Tanh()]
+                  nn.Sigmoid()]
+        # In the layers above, we have to use Tanh to map output between [-1, 1], but because we did not apply any
+        # normalization at first to map our images from [0, 1] to [-1, 1], we use Sigmoid
         self.layer = nn.Sequential(*layers)
 
     def forward(self, x):
@@ -91,13 +93,10 @@ class ResidualBlock(nn.Module):
         super(ResidualBlock, self).__init__()
         self.input_channel = input_channel
         self.output_channel = output_channel
-        self.stride = stride
-        self.kernel_size = kernel_size
-        self.padding = padding
 
         # blocks
         self.cbl = CBL(input_channel, output_channel, kernel_size, stride, padding)
-        self.cl = CL(input_channel, output_channel, kernel_size, stride, padding)
+        self.cl = CL(output_channel, output_channel, kernel_size, stride, padding)
 
     def forward(self, x):
         out = self.cbl(x)
@@ -129,9 +128,7 @@ class DetailsNet(nn.Module):
         self.final = C(input_channel=64, output_channel=self.output_channels)
 
     def forward(self, x):
-        residual0 = x
         x = self.block0(x)
-        x += residual0
 
         residual1 = x
         x = self.block1(x)
@@ -151,6 +148,6 @@ class DetailsNet(nn.Module):
 
 
 # %% tests
-# z = torch.randn(size=(1, 64, 128, 128))
+# z = torch.randn(size=(1, 32, 256, 256))
 # details_net = DetailsNet()
 # zo = details_net(z)
