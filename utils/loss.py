@@ -4,6 +4,7 @@ import torch
 from vgg import vgg19_bn
 import numpy as np
 
+
 # %% DetailsNet class
 class DetailsLoss(nn.Module):
     def __init__(self, w1=100, w2=0.1, w3=0.5, w4=1):
@@ -47,7 +48,7 @@ class DetailsLoss(nn.Module):
     @staticmethod
     def get_patch(mat, size=14, stride=14):
         """
-
+        Returns a tensor of patches of input tensor
 
         :param mat: A tensor (batch_size, channel_size, height, width)
         :param stride: Stride size of the patch
@@ -77,8 +78,7 @@ class DetailsLoss(nn.Module):
         patch_loss = np.sum(
             [self.MSE_loss(self.gram_matrix(self.get_patch(ly)), self.gram_matrix(self.get_patch(lp)))
              for ly, lp in zip(y_vgg, y_pred_vgg)])
-        adversarial_loss = None
+        adversarial_loss = self.MSE_loss(y, y_pred)
 
         loss = self.w1 * coarse_loss + self.w2 * edge_loss + self.w3 * patch_loss + self.w4 * adversarial_loss
-        raise NotImplementedError('Adversarial loss not implemented')
         return loss
