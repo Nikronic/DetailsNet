@@ -135,6 +135,7 @@ class DiscriminatorTwo(nn.Module):
 
 
 # %% tests
-z = torch.randn(size=(1, 9, 128, 128))
-d1 = DiscriminatorTwo()
-z = d1(z)
+# z = torch.randn(size=(1, 3, 256, 256))
+# d1 = DiscriminatorOne()
+# z = d1(z)
+# z.size()
