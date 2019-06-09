@@ -68,7 +68,7 @@ class C(nn.Module):
 
         super(C, self).__init__()
         layers = [nn.Conv2d(input_channel, output_channel, kernel_size=kernel_size, stride=stride, padding=padding),
-                  nn.Sigmoid()]
+                  nn.Tanh()]
         # In the layers above, we have to use Tanh to map output between [-1, 1], but because we did not apply any
         # normalization at first to map our images from [0, 1] to [-1, 1], we use Sigmoid
         self.layer = nn.Sequential(*layers)

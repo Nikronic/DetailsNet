@@ -2,7 +2,7 @@
 from DetailsNet import DetailsNet
 from Discriminators import DiscriminatorOne, DiscriminatorTwo
 from torchvision.transforms import Compose, ToPILImage, ToTensor, RandomResizedCrop, RandomRotation, \
-    RandomHorizontalFlip
+    RandomHorizontalFlip, Normalize
 from utils.preprocess import *
 import torch
 from torch.utils.data import DataLoader
@@ -22,6 +22,7 @@ custom_transforms = Compose([
     RandomRotation(degrees=(-30, 30)),
     RandomHorizontalFlip(p=0.5),
     ToTensor(),
+    Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     RandomNoise(p=0.5, mean=0, std=0.1)])
 
 train_dataset = PlacesDataset(txt_path='filelist.txt',
@@ -146,7 +147,7 @@ def test_model(net, data_loader):
     return outputs
 
 
-def show_test(image_batch):
+def show_image_batch(image_batch):
     """
     Get a batch of images of torch.Tensor type and show them as a single gridded PIL image
 
@@ -159,8 +160,8 @@ def show_test(image_batch):
         img = to_pil(image_batch[i].cpu())
         fs.append(img)
     x, y = fs[0].size
-    ncol = 3
-    nrow = 3
+    ncol = int(np.ceil(np.sqrt(len(image_batch))))
+    nrow = int(np.ceil(np.sqrt(len(image_batch))))
     cvs = Image.new('RGB', (x * ncol, y * nrow))
     for i in range(len(fs)):
         px, py = x * int(i / nrow), y * (i % nrow)
