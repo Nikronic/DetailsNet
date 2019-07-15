@@ -27,7 +27,7 @@ class DetailsLoss(nn.Module):
         self.l1_loss = nn.L1Loss(reduction='mean')
         self.MSE_loss = nn.MSELoss(reduction='mean')
         self.BCE_loss = nn.BCELoss(reduction='mean')
-        self.vgg19_bn = vgg19_bn(pretrained=True)
+        self.vgg19_bn = vgg19_bn(pretrained=True).eval()
 
     # reference: https://github.com/pytorch/tutorials/blob/master/advanced_source/neural_style_tutorial.py
     @staticmethod

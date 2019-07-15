@@ -100,6 +100,7 @@ class DiscriminatorOne(nn.Module):
         x = self.cbl2(x)
         x = self.cbl3(x)
         x = self.final(x)
+        x = x.view(x.size(0), -1)
         return x
 
 
@@ -131,6 +132,7 @@ class DiscriminatorTwo(nn.Module):
         x = self.cbl2(x)
         x = self.cbl3(x)
         x = self.final(x)
+        x = x.view(x.size(0), -1)
         return x
 
 

@@ -80,9 +80,9 @@ def train_model(network, data_loader, optimizer, criterion, epochs=10):
     disc_one = network['disc1'].train()
     disc_two = network['disc2'].train()
 
-    coarse_crit = criterion['details']
-    # edge_crit = criterion['disc1']
-    # details_crit = criterion['disc2']
+    # details_crit = criterion['details']
+    # disc_one_crit = criterion['disc1']
+    # disc_two_crit = criterion['disc2']
 
     details_optim = optimizer['details']
     disc_one_optim = optimizer['disc1']
@@ -91,41 +91,54 @@ def train_model(network, data_loader, optimizer, criterion, epochs=10):
     for epoch in range(epochs):
 
         running_loss_g = 0.0
-        running_loss_d = 0.0
+        running_loss_disc_one = 0.0
+        running_loss_disc_two = 0.0
         for i, data in enumerate(data_loader, 0):
-            X = data['y_descreen']
+            y_d = data['y_descreen']
             y_noise = data['y_noise']
 
-            valid = torch.ones(X.size(0) ,1).fill_(1.0)
-            fake = torch.zeros(X.size(0), 1).fill_(0.0)
+            valid = torch.ones(y_d.size(0), 1).fill_(1.0)
+            fake = torch.zeros(y_d.size(0), 1).fill_(0.0)
 
-            X = X.to(device)
-            X = random_noise_adder(X)
+            y_d = y_d.to(device)
+            y_d = random_noise_adder(y_d)
             y_noise = y_noise.to(device)
 
             # train generator
             details_optim.zero_grad()
 
-            gen_imgs = net(y_noise)
+            gen_imgs = details_net(y_noise)
             g_loss = criterion(disc_one(gen_imgs), valid)
             g_loss.backward()
-            optimizer_g.step()
+            details_optim.step()
 
-            # train discriminator
-            optimizer_d1.zero_grad()
-            optimizer_d2.zero_grad()
+            # train discriminator one
+            disc_one_optim.zero_grad()
 
-            real_loss = criterion(disc_one(X), valid)
+            Ia = 0  # output of coarse_net
+            ground_truth_residual = y_d - Ia
+            real_loss = criterion(disc_one(ground_truth_residual), valid)
             fake_loss = criterion(disc_one(gen_imgs), fake)
-            d_loss = (real_loss + fake_loss) / 2
-            d_loss.backward()
-            optimizer_d1.step()
-            optimizer_d2.step()
+            disc_one_loss = (real_loss + fake_loss) / 2
+            disc_one_loss.backward()
+            disc_one_optim.step()
+
+            # train discriminator two
+            disc_two_optim.zero_grad()
+
+            object_output = torch.Tensor()
+            real_loss = criterion(disc_two(torch.cat((y_d, object_output)), dim=1), valid)
+            fake_loss = criterion(disc_two(torch.cat((gen_imgs, object_output)), dim=1), fake)
+            disc_two_loss = (real_loss + fake_loss) / 2
+            disc_two_loss.backward()
+            disc_two_optim.step()
 
             running_loss_g += g_loss.item()
-            running_loss_d += d_loss.item()
+            running_loss_disc_one += disc_one_loss.item()
+            running_loss_disc_two += disc_two_loss.item()
 
-            print('[%d, %5d] loss_g: %.3f , loss_d: %0.f' % (epoch + 1, i + 1, running_loss_g, running_loss_d))
+            print('[%d, %5d] loss_g: %.3f , loss_d1: %0.f, loss_d2: %0.f' %
+                  (epoch + 1, i + 1, running_loss_g, running_loss_disc_one, running_loss_disc_two))
     print('Finished Training')
 
 
@@ -179,11 +192,15 @@ def show_image_batch(image_batch):
 
 
 # %% run model
-details_crit = DetailsLoss()
+# details_crit = DetailsLoss()
+
+# to simplify implementation for demonstration purposes, I just use MSE loss just like LSGAN
+# Final and fully implmeneted model can be found here : https://github.com/Nikronic/Deep-Halftoning
+
 random_noise_adder = RandomNoise(p=0, mean=0, std=0.0007)
-details_net = DetailsNet().to(device)
+details_net = DetailsNet(input_channels=3).to(device)
 disc_one = DiscriminatorOne().to(device)
-disc_two = DiscriminatorTwo().to(device)
+disc_two = DiscriminatorTwo(input_channel=3).to(device)
 
 details_optim = optim.Adam(details_net.parameters(), lr=0.0001)
 disc_one_optim = optim.Adam(disc_one.parameters(), lr=0.0001)
@@ -199,11 +216,11 @@ models = {
     'disc2': disc_two
 }
 
-losses = {
-    'details': details_crit,
-    'disc1': disc_one,
-    'disc2': disc_two
-}
+# losses = {
+#     'details': details_crit,
+#     'disc1': disc_one,
+#     'disc2': disc_two
+# }
 
 optims = {
     'details': details_optim,
@@ -211,5 +228,6 @@ optims = {
     'disc2': disc_two_optim
 }
 
+# %% train model
 
-train_model(models, train_loader, optimizer=optims, criterion=losses, epochs=1)
+train_model(models, train_loader, optimizer=optims, criterion=nn.MSELoss(), epochs=1)
