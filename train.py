@@ -23,7 +23,7 @@ custom_transforms = Compose([
     RandomHorizontalFlip(p=0.5),
     ToTensor(),
     Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    RandomNoise(p=0.5, mean=0, std=0.1)])
+    RandomNoise(p=0.5, mean=0, std=0.0007)])
 
 train_dataset = PlacesDataset(txt_path='filelist.txt',
                               img_dir='data',
@@ -56,19 +56,19 @@ def init_weights(m):
     """
 
     if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-        torch.nn.init.kaiming_normal_(m.weight, mode='fan_out')
-        nn.init.constant_(m.bias, 0)
+        torch.nn.init.kaiming_normal_(m.weight.data, mode='fan_out')
+        nn.init.constant_(m.bias.data, 0)
     elif isinstance(m, nn.BatchNorm2d):  # reference: https://github.com/pytorch/pytorch/issues/12259
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
+        nn.init.constant_(m.weight.data, 1)
+        nn.init.constant_(m.bias.data, 0)
 
 
 # %% train model
-def train_model(net, data_loader, optimizer, criterion, discriminators=None, epochs=10):
+def train_model(network, data_loader, optimizer, criterion, epochs=10):
     """
     Train model
-    :param net: Parameters of defined neural network
-    :param discriminators: List of discriminators objects
+
+    :param network: Parameters of defined neural network consisting of a generator and two discriminators
     :param data_loader: A data loader object defined on train data set
     :param epochs: Number of epochs to train model
     :param optimizer: Optimizer(s) to train network
@@ -76,11 +76,18 @@ def train_model(net, data_loader, optimizer, criterion, discriminators=None, epo
     :return: None
     """
 
-    optimizer_g = optimizer[0]
-    optimizer_d1 = optimizer[1]
-    optimizer_d2 = optimizer[2]
+    details_net = network['details'].train()
+    disc_one = network['disc1'].train()
+    disc_two = network['disc2'].train()
 
-    net.train()
+    coarse_crit = criterion['details']
+    # edge_crit = criterion['disc1']
+    # details_crit = criterion['disc2']
+
+    details_optim = optimizer['details']
+    disc_one_optim = optimizer['disc1']
+    disc_two_optim = optimizer['disc2']
+
     for epoch in range(epochs):
 
         running_loss_g = 0.0
@@ -89,15 +96,15 @@ def train_model(net, data_loader, optimizer, criterion, discriminators=None, epo
             X = data['y_descreen']
             y_noise = data['y_noise']
 
-            valid = Variable(Tensor(X.size(0), 1).fill_(1.0), requires_grad=False)
-            fake = Variable(Tensor(X.size(0), 1).fill_(0.0), requires_grad=False)
+            valid = torch.ones(X.size(0) ,1).fill_(1.0)
+            fake = torch.zeros(X.size(0), 1).fill_(0.0)
 
             X = X.to(device)
             X = random_noise_adder(X)
             y_noise = y_noise.to(device)
 
             # train generator
-            optimizer_g.zero_grad()
+            details_optim.zero_grad()
 
             gen_imgs = net(y_noise)
             g_loss = criterion(disc_one(gen_imgs), valid)
@@ -172,19 +179,37 @@ def show_image_batch(image_batch):
 
 
 # %% run model
-criterion = DetailsLoss()
-random_noise_adder = RandomNoise(p=0, mean=0, std=1)
+details_crit = DetailsLoss()
+random_noise_adder = RandomNoise(p=0, mean=0, std=0.0007)
 details_net = DetailsNet().to(device)
 disc_one = DiscriminatorOne().to(device)
 disc_two = DiscriminatorTwo().to(device)
 
-optimizer_g = optim.Adam(details_net.parameters(), lr=0.0001)
-optimizer_d1 = optim.Adam(disc_one.parameters(), lr=0.0001)
-optimizer_d2 = optim.Adam(disc_two.parameters(), lr=0.0001)
+details_optim = optim.Adam(details_net.parameters(), lr=0.0001)
+disc_one_optim = optim.Adam(disc_one.parameters(), lr=0.0001)
+disc_two_optim = optim.Adam(disc_two.parameters(), lr=0.0001)
 
 details_net.apply(init_weights)
 disc_one.apply(init_weights)
 disc_two.apply(init_weights)
 
-train_model(details_net, train_loader, optimizer=[optimizer_g, optimizer_d1, optimizer_d2],
-            criterion=criterion, discriminators=[disc_one, disc_two], epochs=10)
+models = {
+    'details': details_net,
+    'disc1': disc_one,
+    'disc2': disc_two
+}
+
+losses = {
+    'details': details_crit,
+    'disc1': disc_one,
+    'disc2': disc_two
+}
+
+optims = {
+    'details': details_optim,
+    'disc1': disc_one_optim,
+    'disc2': disc_two_optim
+}
+
+
+train_model(models, train_loader, optimizer=optims, criterion=losses, epochs=1)

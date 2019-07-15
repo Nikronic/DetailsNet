@@ -123,7 +123,7 @@ class PlacesDataset(Dataset):
 
 
 class RandomNoise(object):
-    def __init__(self, p, mean=0, std=0.1):
+    def __init__(self, p, mean=0, std=0.0007):  # 0.0007 = 0.1([0-255] images) / 128 = ([-1, 1] images)
         self.p = p
         self.mean = mean
         self.std = std
