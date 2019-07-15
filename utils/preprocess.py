@@ -134,3 +134,31 @@ class RandomNoise(object):
             return img+noise.normal_(self.mean, self.std)
         return img
 
+
+class Blend(object):
+    """
+    Blend two input tensors(tensors) with respect to the alpha value as a weight if random number is lower than p
+    for each example
+    """
+
+    def __init__(self, p=0.5):
+        self.p = p
+
+    def __call__(self, halftone, ground_truth, alpha=0.5):
+        """
+
+        :param halftone: First tensor to be blended (batch_size, channel_size, height, width)
+        :param ground_truth: Second tensor to be blended with size (batch_size, channel_size, height, width)
+        :param alpha: weight of linear addition of two tensors
+
+        :return: A tensor with size of (batch_size, channel_size, height, width)
+        """
+
+        p = torch.zeros(halftone.size()[0]).new_full((halftone.size()[0], ), self.p)
+        rand = torch.zeros(p.size()[0]).uniform_()
+        blend = torch.zeros((halftone.size()))
+        mask = rand < p
+        blend[mask] = halftone[mask] * (1.0 - alpha) + ground_truth[mask] * alpha
+        mask = rand > p
+        blend[mask] = halftone[mask]
+        return blend
