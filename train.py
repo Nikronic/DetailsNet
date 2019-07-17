@@ -129,7 +129,7 @@ def train_model(network, data_loader, optimizer, criterion, epochs=10):
             # train discriminator two
             disc_two_optim.zero_grad()
 
-            object_output = torch.Tensor()
+            object_output = torch.Tensor().to(device)
             disc_two_out = disc_two(torch.cat((y_d, object_output), dim=1))
             valid = torch.ones(disc_two_out.size()).to(device)
             real_loss = criterion(disc_two_out, valid)
