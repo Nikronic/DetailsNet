@@ -12,9 +12,39 @@ from torch.autograd import Variable
 import torch.optim as optim
 import torch.nn as nn
 from torch.backends import cudnn
+import argparse
+
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 Tensor = torch.cuda.FloatTensor if torch.cuda.is_available else torch.FloatTensor
+
+
+# %% argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--txt", help='path to the text file', default='filelist.txt')
+parser.add_argument("--img", help='path to the images tar(bug!) archive (uncompressed) or folder', default='data')
+parser.add_argument("--txt_t", help='path to the text file of test set', default='filelist.txt')
+parser.add_argument("--img_t", help='path to the images tar archive (uncompressed) of testset ', default='data')
+parser.add_argument("--bs", help='int number as batch size', default=128, type=int)
+parser.add_argument("--es", help='int number as number of epochs', default=10, type=int)
+parser.add_argument("--nw", help='number of workers (1 to 8 recommended)', default=4, type=int)
+parser.add_argument("--lr", help='learning rate of optimizer (=0.0001)', default=0.0001, type=float)
+parser.add_argument("--cudnn", help='enable(1) cudnn.benchmark or not(0)', default=0, type=int)
+parser.add_argument("--pm", help='enable(1) pin_memory or not(0)', default=0, type=int)
+args = parser.parse_args()
+
+
+if args.cudnn == 1:
+    cudnn.benchmark = True
+else:
+    cudnn.benchmark = False
+
+if args.pm == 1:
+    pin_memory = True
+else:
+    pin_memory = False
+
 
 # %% define data sets and their loaders
 custom_transforms = Compose([
@@ -25,26 +55,26 @@ custom_transforms = Compose([
     Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     RandomNoise(p=0.5, mean=0, std=0.0007)])
 
-train_dataset = PlacesDataset(txt_path='filelist.txt',
-                              img_dir='data',
+train_dataset = PlacesDataset(txt_path=args.txt,
+                              img_dir=args.img,
                               transform=custom_transforms)
 
 train_loader = DataLoader(dataset=train_dataset,
-                          batch_size=128,
+                          batch_size=args.bs,
                           shuffle=True,
-                          num_workers=1,
-                          pin_memory=False)
+                          num_workers=args.nw,
+                          pin_memory=pin_memory)
 
-test_dataset = PlacesDataset(txt_path='filelist.txt',
-                             img_dir='data',
-                             transform=ToTensor())
+test_dataset = PlacesDataset(txt_path=args.txt_t,
+                             img_dir=args.img_t,
+                             transform=ToTensor(),
+                             test=True)
 
 test_loader = DataLoader(dataset=test_dataset,
-                         batch_size=128,
+                         batch_size=args.bs,
                          shuffle=False,
-                         num_workers=0,
-                         pin_memory=False)
-
+                         num_workers=args.nw,
+                         pin_memory=pin_memory)
 
 # %% initialize network, loss and optimizer
 def init_weights(m):
@@ -202,16 +232,16 @@ def show_image_batch(image_batch):
 # details_crit = DetailsLoss()
 
 # to simplify implementation for demonstration purposes, I just use MSE loss just like LSGAN
-# Final and fully implmeneted model can be found here : https://github.com/Nikronic/Deep-Halftoning
+# Final and fully implemented model can be found here : https://github.com/Nikronic/Deep-Halftoning
 
 random_noise_adder = RandomNoise(p=0, mean=0, std=0.0007)
 details_net = DetailsNet(input_channels=3).to(device)
 disc_one = DiscriminatorOne().to(device)
 disc_two = DiscriminatorTwo(input_channel=3).to(device)
 
-details_optim = optim.Adam(details_net.parameters(), lr=0.0001)
-disc_one_optim = optim.Adam(disc_one.parameters(), lr=0.0001)
-disc_two_optim = optim.Adam(disc_two.parameters(), lr=0.0001)
+details_optim = optim.Adam(details_net.parameters(), lr=args.lr)
+disc_one_optim = optim.Adam(disc_one.parameters(), lr=args.lr)
+disc_two_optim = optim.Adam(disc_two.parameters(), lr=args.lr)
 
 details_net.apply(init_weights)
 disc_one.apply(init_weights)
@@ -237,4 +267,4 @@ optims = {
 
 # %% train model
 
-train_model(models, train_loader, optimizer=optims, criterion=nn.MSELoss(), epochs=1)
+train_model(models, train_loader, optimizer=optims, criterion=nn.MSELoss(), epochs=args.es)
