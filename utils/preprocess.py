@@ -1,6 +1,6 @@
 from __future__ import print_function, division
 from PIL import Image
-from torchvision.transforms import ToTensor, ToPILImage
+from torchvision.transforms import ToTensor, ToPILImage, Compose
 import numpy as np
 
 import random
@@ -15,13 +15,14 @@ from torch.utils.data import Dataset
 
 # %% custom dataset
 class PlacesDataset(Dataset):
-    def __init__(self, txt_path='filelist.txt', img_dir='data', transform=None):
+    def __init__(self, txt_path='filelist.txt', img_dir='data', transform=None, test=False):
         """
         Initialize data set as a list of IDs corresponding to each item of data set
 
         :param img_dir: path to image files as a uncompressed tar archive
         :param txt_path: a text file containing names of all of images line by line
         :param transform: apply some transforms like cropping, rotating, etc on input image
+        :param test: is inference time or not
         :return: a 3-value dict containing input image (y_descreen) as ground truth,
          input image X as halftone image and edge-map (y_edge) of ground truth image to feed into the network.
         """
@@ -35,6 +36,7 @@ class PlacesDataset(Dataset):
         self.to_pil = ToPILImage()
         self.get_image_selector = True if img_dir.__contains__('tar') else False
         self.tf = tarfile.open(self.img_dir) if self.get_image_selector else None
+        self.transform_gt = transform if test else Compose(self.transform.transforms[:-1])  # omit noise of ground truth
 
     def get_image_from_tar(self, name):
         """
@@ -86,8 +88,12 @@ class PlacesDataset(Dataset):
         else:
             y_descreen = self.get_image_from_folder(self.img_names[index])
 
+        seed = np.random.randint(2147483647)
+        random.seed(seed)
+
         if self.transform is not None:
             y_descreen = self.transform(y_descreen)
+            random.seed(seed)
 
         # generate edge-map
         y_noise = self.noisy_image(y_descreen)
