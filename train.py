@@ -190,7 +190,7 @@ def train_model(network, data_loader, optimizer, criterion, epochs=10):
 
 
 # %% test
-def test_model(net, data_loader):
+def test_model(net, data_loader, criterion):
     """
     Return loss on test
 
@@ -214,11 +214,12 @@ def test_model(net, data_loader):
     return outputs
 
 
-def show_image_batch(image_batch):
+def show_image_batch(image_batch, name='out.png'):
     """
     Get a batch of images of torch.Tensor type and show them as a single gridded PIL image
-
+    
     :param image_batch: A Batch of torch.Tensor contain images
+    :param name: Name of output image
     :return: An array of PIL images
     """
     to_pil = ToPILImage()
@@ -233,7 +234,7 @@ def show_image_batch(image_batch):
     for i in range(len(fs)):
         px, py = x * int(i / nrow), y * (i % nrow)
         cvs.paste((fs[i]), (px, py))
-    cvs.save('out.png', format='png')
+    cvs.save(name, format='png')
     cvs.show()
     return fs
 
