@@ -124,17 +124,17 @@ def train_model(network, data_loader, optimizer, criterion, epochs=10):
         running_loss_disc_one = 0.0
         running_loss_disc_two = 0.0
         for i, data in enumerate(data_loader, 0):
-            y_d = data['y_descreen']
-            y_noise = data['y_noise']
+            gt = data['y_descreen']
+            noise = data['y_noise']
 
-            y_d = y_d.to(device)
-            y_noise = y_noise.to(device)
-            y_noise = random_noise_adder(y_noise)
+            gt = gt.to(device)
+            noise = noise.to(device)
+            noise = random_noise_adder(noise)
 
             # train generator
             details_optim.zero_grad()
 
-            gen_imgs = details_net(y_noise)
+            gen_imgs = details_net(noise)
 
             disc_one_out = disc_one(gen_imgs)
             valid = torch.ones(disc_one_out.size()).to(device)
@@ -153,7 +153,7 @@ def train_model(network, data_loader, optimizer, criterion, epochs=10):
             disc_one_optim.zero_grad()
 
             Ia = 0  # output of coarse_net
-            ground_truth_residual = y_d - Ia
+            ground_truth_residual = gt - Ia
             disc_one_out = disc_one(ground_truth_residual)
             valid = torch.ones(disc_one_out.size()).to(device)
             real_loss = criterion(disc_one_out.detach(), valid)
@@ -169,7 +169,7 @@ def train_model(network, data_loader, optimizer, criterion, epochs=10):
             disc_two_optim.zero_grad()
 
             object_output = torch.Tensor().to(device)
-            disc_two_out = disc_two(torch.cat((y_noise, object_output), dim=1))
+            disc_two_out = disc_two(torch.cat((noise, object_output), dim=1))
             valid = torch.ones(disc_two_out.size()).to(device)
             real_loss = criterion(disc_two_out.detach(), valid)
             disc_two_out = disc_two(torch.cat((gen_imgs, object_output), dim=1))
