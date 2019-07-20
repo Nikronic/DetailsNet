@@ -128,17 +128,25 @@ def train_model(network, data_loader, optimizer, criterion, epochs=10):
             y_noise = data['y_noise']
 
             y_d = y_d.to(device)
-            y_d = random_noise_adder(y_d)
             y_noise = y_noise.to(device)
+            y_noise = random_noise_adder(y_noise)
 
             # train generator
             details_optim.zero_grad()
 
             gen_imgs = details_net(y_noise)
+
             disc_one_out = disc_one(gen_imgs)
             valid = torch.ones(disc_one_out.size()).to(device)
-            g_loss = criterion(disc_one_out, valid)
-            g_loss.backward(retain_graph=True)
+            g_loss_d1 = criterion(disc_one_out.detach(), valid)
+
+            disc_two_out = disc_two(gen_imgs)
+            valid = torch.ones(disc_two_out.size()).to(device)
+            g_loss_d2 = criterion(disc_two_out.detach(), valid)
+
+            g_loss = g_loss_d1 + g_loss_d2
+            g_loss.requires_grad = True
+            g_loss.backward()
             details_optim.step()
 
             # train discriminator one
@@ -148,25 +156,27 @@ def train_model(network, data_loader, optimizer, criterion, epochs=10):
             ground_truth_residual = y_d - Ia
             disc_one_out = disc_one(ground_truth_residual)
             valid = torch.ones(disc_one_out.size()).to(device)
-            real_loss = criterion(disc_one_out, valid)
+            real_loss = criterion(disc_one_out.detach(), valid)
             disc_one_out = disc_one(gen_imgs)
             fake = torch.zeros(disc_one_out.size()).to(device)
-            fake_loss = criterion(disc_one_out, fake)
-            disc_one_loss = (real_loss + fake_loss) / 2
-            disc_one_loss.backward(retain_graph=True)
+            fake_loss = criterion(disc_one_out.detach(), fake)
+            disc_one_loss = real_loss - fake_loss
+            disc_one_loss.requires_grad = True
+            disc_one_loss.backward()
             disc_one_optim.step()
 
             # train discriminator two
             disc_two_optim.zero_grad()
 
             object_output = torch.Tensor().to(device)
-            disc_two_out = disc_two(torch.cat((y_d, object_output), dim=1))
+            disc_two_out = disc_two(torch.cat((y_noise, object_output), dim=1))
             valid = torch.ones(disc_two_out.size()).to(device)
-            real_loss = criterion(disc_two_out, valid)
+            real_loss = criterion(disc_two_out.detach(), valid)
             disc_two_out = disc_two(torch.cat((gen_imgs, object_output), dim=1))
             fake = torch.zeros(disc_two_out.size()).to(device)
-            fake_loss = criterion(disc_two_out, fake)
-            disc_two_loss = (real_loss + fake_loss) / 2
+            fake_loss = criterion(disc_two_out.detach(), fake)
+            disc_two_loss = real_loss - fake_loss
+            disc_two_loss.requires_grad = True
             disc_two_loss.backward()
             disc_two_optim.step()
 
@@ -268,3 +278,4 @@ optims = {
 # %% train model
 
 train_model(models, train_loader, optimizer=optims, criterion=nn.MSELoss(), epochs=args.es)
+
