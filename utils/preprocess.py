@@ -1,6 +1,6 @@
 from __future__ import print_function, division
 from PIL import Image
-from torchvision.transforms import ToTensor, ToPILImage, Compose
+from torchvision.transforms import ToTensor, ToPILImage, Compose, Normalize
 import numpy as np
 
 import random
@@ -129,7 +129,7 @@ class PlacesDataset(Dataset):
 
 
 class RandomNoise(object):
-    def __init__(self, p, mean=0, std=0.0007):  # 0.0007 = 0.1([0-255] images) / 128 = ([-1, 1] images)
+    def __init__(self, p, mean=0, std=0.1): 
         self.p = p
         self.mean = mean
         self.std = std
@@ -168,3 +168,23 @@ class Blend(object):
         mask = rand > p
         blend[mask] = halftone[mask]
         return blend
+
+
+class UnNormalizeNative(object):
+    """
+    Unnormalize an input tensor given the mean and std
+    """
+
+    def __init__(self, mean, std):
+        self.mean = torch.tensor(mean)
+        self.std = torch.tensor(std)
+
+    def __call__(self, tensor):
+        """
+        Args:
+            tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
+        Returns:
+            Tensor: Normalized image.
+        """
+
+        return Normalize((-mean / std).tolist(), (1.0 / std).tolist())
