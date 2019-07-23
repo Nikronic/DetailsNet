@@ -52,8 +52,8 @@ custom_transforms = Compose([
     RandomRotation(degrees=(-30, 30)),
     RandomHorizontalFlip(p=0.5),
     ToTensor(),
-    Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    RandomNoise(p=0.5, mean=0, std=0.0007)])
+    Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    RandomNoise(p=0.5, mean=0, std=0.1)])
 
 train_dataset = PlacesDataset(txt_path=args.txt,
                               img_dir=args.img,
@@ -245,7 +245,7 @@ def show_image_batch(image_batch, name='out.png'):
 # to simplify implementation for demonstration purposes, I just use MSE loss just like LSGAN
 # Final and fully implemented model can be found here : https://github.com/Nikronic/Deep-Halftoning
 
-random_noise_adder = RandomNoise(p=0, mean=0, std=0.0007)
+random_noise_adder = RandomNoise(p=0, mean=0, std=0.1)
 details_net = DetailsNet(input_channels=3).to(device)
 disc_one = DiscriminatorOne().to(device)
 disc_two = DiscriminatorTwo(input_channel=3).to(device)
