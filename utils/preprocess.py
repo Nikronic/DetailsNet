@@ -92,12 +92,10 @@ class PlacesDataset(Dataset):
         random.seed(seed)
 
         if self.transform is not None:
+            y_noise = self.noisy_image(y_descreen)
             y_descreen = self.transform(y_descreen)
             random.seed(seed)
-
-        # generate edge-map
-        y_noise = self.noisy_image(y_descreen)
-        y_noise = self.to_tensor(y_noise)
+            y_noise = self.transform_gt(y_noise)
 
         sample = {'y_descreen': y_descreen,
                   'y_noise': y_noise}
