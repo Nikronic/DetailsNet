@@ -3,6 +3,7 @@ from DetailsNet import DetailsNet
 from Discriminators import DiscriminatorOne, DiscriminatorTwo
 from torchvision.transforms import Compose, ToPILImage, ToTensor, RandomResizedCrop, RandomRotation, \
     RandomHorizontalFlip, Normalize
+import torchvision.utils as vutils
 from utils.preprocess import *
 import torch
 from torch.utils.data import DataLoader
@@ -14,10 +15,8 @@ import torch.nn as nn
 from torch.backends import cudnn
 import argparse
 
-
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 Tensor = torch.cuda.FloatTensor if torch.cuda.is_available else torch.FloatTensor
-
 
 # %% argparse
 
@@ -34,7 +33,6 @@ parser.add_argument("--cudnn", help='enable(1) cudnn.benchmark or not(0)', defau
 parser.add_argument("--pm", help='enable(1) pin_memory or not(0)', default=0, type=int)
 args = parser.parse_args()
 
-
 if args.cudnn == 1:
     cudnn.benchmark = True
 else:
@@ -44,7 +42,6 @@ if args.pm == 1:
     pin_memory = True
 else:
     pin_memory = False
-
 
 # %% define data sets and their loaders
 custom_transforms = Compose([
@@ -75,6 +72,7 @@ test_loader = DataLoader(dataset=test_dataset,
                          shuffle=False,
                          num_workers=args.nw,
                          pin_memory=pin_memory)
+
 
 # %% initialize network, loss and optimizer
 def init_weights(m):
@@ -131,58 +129,67 @@ def train_model(network, data_loader, optimizer, criterion, epochs=10):
             noise = noise.to(device)
             noise = random_noise_adder(noise)
 
-            # train generator
-            details_optim.zero_grad()
-
-            gen_imgs = details_net(noise)
-
-            disc_one_out = disc_one(gen_imgs)
-            valid = torch.ones(disc_one_out.size()).to(device)
-            g_loss_d1 = criterion(disc_one_out.detach(), valid)
-
-            disc_two_out = disc_two(gen_imgs)
-            valid = torch.ones(disc_two_out.size()).to(device)
-            g_loss_d2 = criterion(disc_two_out.detach(), valid)
-
-            g_loss = g_loss_d1 + g_loss_d2
-            g_loss.requires_grad = True
-            g_loss.backward()
-            details_optim.step()
-
-            # train discriminator one
+            # train discriminators
             disc_one_optim.zero_grad()
+            disc_two_optim.zero_grad()
 
+            # Disc one
             Ia = 0  # output of coarse_net
             ground_truth_residual = gt - Ia
             disc_one_out = disc_one(ground_truth_residual)
             valid = torch.ones(disc_one_out.size()).to(device)
-            real_loss = criterion(disc_one_out.detach(), valid)
+            real_loss_d1 = criterion(disc_one_out.detach(), valid)
+            real_loss_d1.backward()
+
+            # Disc Two
+            object_output = torch.Tensor().to(device)
+            disc_two_out = disc_two(torch.cat((noise, object_output), dim=1))  # TODO check concatenated latent vector
+            valid = torch.ones(disc_two_out.size()).to(device)
+            real_loss_d2 = criterion(disc_two_out.detach(), valid)
+            real_loss_d2.backward()
+
+            # fake image
+            gen_imgs = details_net(noise)
+
+            # Disc one
             disc_one_out = disc_one(gen_imgs)
             fake = torch.zeros(disc_one_out.size()).to(device)
-            fake_loss = criterion(disc_one_out.detach(), fake)
-            disc_one_loss = real_loss - fake_loss
-            disc_one_loss.requires_grad = True
-            disc_one_loss.backward()
-            disc_one_optim.step()
+            fake_loss_d1 = criterion(disc_one_out.detach(), fake)
+            fake_loss_d1.backward()
 
-            # train discriminator two
-            disc_two_optim.zero_grad()
-
-            object_output = torch.Tensor().to(device)
-            disc_two_out = disc_two(torch.cat((noise, object_output), dim=1))
-            valid = torch.ones(disc_two_out.size()).to(device)
-            real_loss = criterion(disc_two_out.detach(), valid)
+            # Disc two
             disc_two_out = disc_two(torch.cat((gen_imgs, object_output), dim=1))
             fake = torch.zeros(disc_two_out.size()).to(device)
-            fake_loss = criterion(disc_two_out.detach(), fake)
-            disc_two_loss = real_loss - fake_loss
-            disc_two_loss.requires_grad = True
-            disc_two_loss.backward()
+            fake_loss_d2 = criterion(disc_two_out.detach(), fake)
+            fake_loss_d2.backward()
+
+            # Disc one and two
+            disc_one_optim.step()
             disc_two_optim.step()
 
-            running_loss_g += g_loss.item()
-            running_loss_disc_one += disc_one_loss.item()
-            running_loss_disc_two += disc_two_loss.item()
+            # train generator
+            details_optim.zero_grad()
+
+            disc_one_out = disc_one(gen_imgs)
+            valid = torch.ones(disc_one_out.size()).to(device)
+            loss_g1 = criterion(disc_one_out.detach(), valid)
+
+            disc_two_out = disc_two(gen_imgs)
+            valid = torch.ones(disc_two_out.size()).to(device)
+            loss_g2 = criterion(disc_two_out.detach(), valid)
+
+            loss_g = loss_g1 + loss_g2
+            # loss_g.requires_grad = True
+            loss_g.backward()
+            details_optim.step()
+
+            running_loss_g += loss_g.item()
+            running_loss_disc_one += fake_loss_d1.item() + real_loss_d1.item()
+            running_loss_disc_two += fake_loss_d2.item() + real_loss_d2.item()
+
+            vutils.save_image(gen_imgs.cpu().data,
+                              '%s/fake_samples_epoch_%s.png' % ('result', str(epoch) + "_" + str(i + 1)),
+                              normalize=True)
 
             print('[%d, %5d] loss_g: %.3f , loss_d1: %0.f, loss_d2: %0.f' %
                   (epoch + 1, i + 1, running_loss_g, running_loss_disc_one, running_loss_disc_two))
@@ -279,4 +286,3 @@ optims = {
 # %% train model
 
 train_model(models, train_loader, optimizer=optims, criterion=nn.MSELoss(), epochs=args.es)
-
