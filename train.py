@@ -138,14 +138,14 @@ def train_model(network, data_loader, optimizer, criterion, epochs=10):
             ground_truth_residual = gt - Ia
             disc_one_out = disc_one(ground_truth_residual)
             valid = torch.ones(disc_one_out.size()).to(device)
-            real_loss_d1 = criterion(disc_one_out.detach(), valid)
+            real_loss_d1 = criterion(disc_one_out, valid)
             real_loss_d1.backward()
 
             # Disc Two
             object_output = torch.Tensor().to(device)
             disc_two_out = disc_two(torch.cat((noise, object_output), dim=1))  # TODO check concatenated latent vector
             valid = torch.ones(disc_two_out.size()).to(device)
-            real_loss_d2 = criterion(disc_two_out.detach(), valid)
+            real_loss_d2 = criterion(disc_two_out, valid)
             real_loss_d2.backward()
 
             # fake image
@@ -154,13 +154,13 @@ def train_model(network, data_loader, optimizer, criterion, epochs=10):
             # Disc one
             disc_one_out = disc_one(gen_imgs)
             fake = torch.zeros(disc_one_out.size()).to(device)
-            fake_loss_d1 = criterion(disc_one_out.detach(), fake)
+            fake_loss_d1 = criterion(disc_one_out, fake)
             fake_loss_d1.backward()
 
             # Disc two
-            disc_two_out = disc_two(torch.cat((gen_imgs, object_output), dim=1))
+            disc_two_out = disc_two(torch.cat((gen_imgs.detach(), object_output), dim=1))
             fake = torch.zeros(disc_two_out.size()).to(device)
-            fake_loss_d2 = criterion(disc_two_out.detach(), fake)
+            fake_loss_d2 = criterion(disc_two_out, fake)
             fake_loss_d2.backward()
 
             # Disc one and two
@@ -170,13 +170,13 @@ def train_model(network, data_loader, optimizer, criterion, epochs=10):
             # train generator
             details_optim.zero_grad()
 
-            disc_one_out = disc_one(gen_imgs)
+            disc_one_out = disc_one(gen_imgs.detach())
             valid = torch.ones(disc_one_out.size()).to(device)
-            loss_g1 = criterion(disc_one_out.detach(), valid)
+            loss_g1 = criterion(disc_one_out, valid)
 
-            disc_two_out = disc_two(gen_imgs)
+            disc_two_out = disc_two(gen_imgs.detach())
             valid = torch.ones(disc_two_out.size()).to(device)
-            loss_g2 = criterion(disc_two_out.detach(), valid)
+            loss_g2 = criterion(disc_two_out, valid)
 
             loss_g = loss_g1 + loss_g2
             # loss_g.requires_grad = True
@@ -188,8 +188,8 @@ def train_model(network, data_loader, optimizer, criterion, epochs=10):
             running_loss_disc_two += fake_loss_d2.item() + real_loss_d2.item()
 
             vutils.save_image(gen_imgs.cpu().data,
-                              '%s/fake_samples_epoch_%s.png' % ('result', str(epoch) + "_" + str(i + 1)),
-                              normalize=True)
+                              'fake_samples_epoch_%s.png' % (str(epoch) + "_" + str(i + 1)),
+                              normalize=False)
 
             print('[%d, %5d] loss_g: %.3f , loss_d1: %0.f, loss_d2: %0.f' %
                   (epoch + 1, i + 1, running_loss_g, running_loss_disc_one, running_loss_disc_two))
